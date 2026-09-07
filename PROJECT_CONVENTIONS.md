@@ -32,12 +32,15 @@ client/src/
 │   ├── ConfirmDialog.tsx  # 확인/취소 모달 (Esc·배경 클릭 = 취소)
 │   ├── Header.tsx         # 로그인 후 상단 내비게이션 바
 │   └── Pagination.tsx     # 이전/번호/다음 페이지네이션 (totalPages <= 1이면 자동 숨김)
-├── features/<feature>/    # 도메인 단위 폴더: auth, users, posts, dashboard, settings, profile
+├── features/<feature>/    # 도메인 단위 폴더: auth, users, posts, products, reviews, inquiries, dashboard, settings, profile
 │   ├── types.ts           # 도메인 타입
 │   ├── api.ts             # mock/real fetch 함수 (자세한 규칙은 API_CONVENTIONS.md)
 │   ├── queries.ts         # useQuery / useMutation 훅
 │   └── *Page.tsx          # 라우트에 매핑되는 페이지 컴포넌트
-├── App.tsx                # 라우트 정의 + 로그인 상태(user) 보관
+├── routes/
+│   ├── ProtectedRoute.tsx # user가 없으면 /login으로 리다이렉트하는 라우트 가드
+│   └── routeConfig.tsx    # 로그인 후 접근 가능한 라우트 목록(getProtectedRoutes) — 페이지 import는 전부 여기 모여있음
+├── App.tsx                # 라우트 렌더링(routeConfig를 map으로 순회) + 로그인 상태(user) 보관
 ├── main.tsx               # QueryClientProvider + BrowserRouter로 앱 마운트
 └── index.css              # Tailwind 진입점 + 라이트/다크 테마 CSS 변수
 ```
@@ -47,8 +50,8 @@ client/src/
 ### 라우팅 (`App.tsx`)
 
 - 로그인 여부는 `App.tsx`의 `user` state 하나로 관리하고, `features/auth/authStorage.ts`로 `localStorage`(`auth.user` 키)에 영속화해 새로고침에도 유지됩니다. `user`는 표시용 정보(email)일 뿐이며 실제 인증은 access/refresh 토큰이 담당합니다(아래 인증 섹션 참고).
-- 보호된 라우트는 별도 `ProtectedRoute` 컴포넌트 없이, 각 `<Route element={...}>`에 `user ? <Page /> : <Navigate to="/login" replace />` 패턴을 그대로 반복합니다. 새 라우트를 추가할 때도 이 패턴을 따르세요.
-- 현재 라우트: `/login`, `/dashboard`, `/users`, `/users/:id`, `/posts`, `/posts/new`, `/posts/:id`, `/posts/:id/edit`, `/mypage`, `/settings`. `/`와 `*`는 로그인 여부에 따라 `/dashboard` 또는 `/login`으로 리다이렉트됩니다.
+- 보호된 라우트(로그인 필요) 목록은 `routes/routeConfig.tsx`의 `getProtectedRoutes(user)`가 `{ path, element }[]`로 반환하고, `App.tsx`는 이 배열을 `map`으로 돌며 `<Route>`를 렌더링합니다. 각 라우트는 `routes/ProtectedRoute.tsx`(`user`가 없으면 `/login`으로 리다이렉트)로 감쌉니다. 새 페이지를 추가할 때는 `routeConfig.tsx`에 한 줄만 추가하면 되고, `App.tsx`는 건드릴 필요 없습니다. `user` prop이 필요한 페이지(`DashboardPage`, `UsersPage`, `MyPage`, `SettingsPage`)만 `element` 생성 시 `user`를 넘겨줍니다.
+- `/login`, `/`(루트), `*`(캐치올)는 로그인 여부에 따른 리다이렉트 로직이 각각 달라서 `routeConfig.tsx`에 넣지 않고 `App.tsx`에 그대로 남아있습니다.
 - 로그인 성공/로그아웃 시 `navigate(path, { replace: true })`로 히스토리에 흔적을 남기지 않습니다.
 - 로그아웃 시 `queryClient.clear()`로 react-query 캐시를 전부 비웁니다 (계정 전환 시 이전 데이터가 남지 않도록).
 - `localStorage`에 로그인 흔적(`user`)이 있는데 mock 모드가 아니면, 첫 렌더에서 `isRestoringSession`이 true가 되어 `refreshAccessToken()`으로 refresh 쿠키를 이용한 세션 복구를 한 번 시도한 뒤에만 라우트를 렌더링합니다(그동안 "세션 확인 중..." 표시). 실패하면 로그인 화면으로 돌아갑니다.

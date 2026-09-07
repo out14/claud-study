@@ -1,6 +1,7 @@
 import { Link, NavLink } from 'react-router-dom'
 import type { AuthUser } from '@src/features/auth/types'
 import { useUsersQuery } from '@src/features/users/queries'
+import { useThemeMode } from '@src/hooks/useThemeMode'
 
 const NAV_ITEMS = [
   { to: '/dashboard', label: '대시보드' },
@@ -23,6 +24,7 @@ interface HeaderProps {
 function Header({ user, onLogout }: HeaderProps) {
   const { data: users } = useUsersQuery()
   const appUser = users?.find((u) => u.email === user.email)
+  const { effectiveTheme, setMode } = useThemeMode()
 
   return (
     <header className="flex flex-wrap items-center justify-between gap-4 border-b border-border px-5 py-4">
@@ -43,6 +45,13 @@ function Header({ user, onLogout }: HeaderProps) {
       </nav>
 
       <div className="flex items-center gap-4">
+        <button
+          type="button"
+          onClick={() => setMode(effectiveTheme === 'dark' ? 'light' : 'dark')}
+          className="cursor-pointer rounded-md border border-border px-3 py-1.5 text-sm text-heading transition-colors duration-300 hover:border-accent-border focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+        >
+          {effectiveTheme === 'dark' ? '라이트 모드' : '다크 모드'}
+        </button>
         <Link
           to="/mypage"
           className="flex items-center gap-2 rounded-md px-1.5 py-1 text-sm text-text transition-colors duration-300 hover:text-heading"

@@ -1,12 +1,13 @@
 import { useState } from 'react'
 import type { AuthUser } from '@src/features/auth/types'
+import { useThemeMode } from '@src/hooks/useThemeMode'
 
 interface SettingsPageProps {
   user: AuthUser
 }
 
 function SettingsPage({ user }: SettingsPageProps) {
-  const [darkModeFollowsSystem, setDarkModeFollowsSystem] = useState(true)
+  const { mode, setMode, effectiveTheme } = useThemeMode()
   const [emailNotifications, setEmailNotifications] = useState(true)
 
   return (
@@ -24,9 +25,27 @@ function SettingsPage({ user }: SettingsPageProps) {
           </div>
           <input
             type="checkbox"
-            checked={darkModeFollowsSystem}
-            onChange={(event) => setDarkModeFollowsSystem(event.target.checked)}
+            checked={mode === 'system'}
+            onChange={(event) => setMode(event.target.checked ? 'system' : effectiveTheme)}
             className="h-5 w-5 accent-accent"
+          />
+        </div>
+
+        <div className="flex items-center justify-between rounded-md border border-border p-4">
+          <div>
+            <p className="m-0 text-heading">다크 모드</p>
+            <p className="m-0 mt-1 text-sm text-text">
+              {mode === 'system'
+                ? '시스템 테마 사용이 켜져 있어 직접 선택할 수 없습니다.'
+                : '라이트/다크 모드를 직접 선택합니다.'}
+            </p>
+          </div>
+          <input
+            type="checkbox"
+            checked={effectiveTheme === 'dark'}
+            disabled={mode === 'system'}
+            onChange={(event) => setMode(event.target.checked ? 'dark' : 'light')}
+            className="h-5 w-5 accent-accent disabled:opacity-50"
           />
         </div>
 

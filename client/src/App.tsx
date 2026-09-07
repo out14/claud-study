@@ -6,20 +6,8 @@ import LoginPage from './features/auth/LoginPage'
 import { clearStoredUser, loadStoredUser, saveStoredUser } from './features/auth/authStorage'
 import { useLogoutMutation } from './features/auth/queries'
 import type { AuthUser, LoginResult } from './features/auth/types'
-import DashboardPage from './features/dashboard/DashboardPage'
-import UsersPage from './features/users/UsersPage'
-import UserDetailPage from './features/users/UserDetailPage'
-import MyPage from './features/profile/MyPage'
-import SettingsPage from './features/settings/SettingsPage'
-import PostsListPage from './features/posts/PostsListPage'
-import PostDetailPage from './features/posts/PostDetailPage'
-import PostFormPage from './features/posts/PostFormPage'
-import ProductsListPage from './features/products/ProductsListPage'
-import ProductDetailPage from './features/products/ProductDetailPage'
-import ProductFormPage from './features/products/ProductFormPage'
-import ReviewsPage from './features/reviews/ReviewsPage'
-import InquiriesListPage from './features/inquiries/InquiriesListPage'
-import InquiryDetailPage from './features/inquiries/InquiryDetailPage'
+import ProtectedRoute from './routes/ProtectedRoute'
+import { getProtectedRoutes } from './routes/routeConfig'
 import { USE_MOCK_API, refreshAccessToken } from '@src/api/client'
 import { setAccessToken, clearAccessToken } from '@src/api/authToken'
 import { onSessionExpired } from '@src/api/authEvents'
@@ -81,6 +69,8 @@ function App() {
     )
   }
 
+  const protectedRoutes = user ? getProtectedRoutes(user) : []
+
   return (
     <>
       {user && <Header user={user} onLogout={handleLogout} />}
@@ -95,70 +85,13 @@ function App() {
             )
           }
         />
-        <Route
-          path="/dashboard"
-          element={user ? <DashboardPage user={user} /> : <Navigate to="/login" replace />}
-        />
-        <Route
-          path="/users"
-          element={user ? <UsersPage user={user} /> : <Navigate to="/login" replace />}
-        />
-        <Route
-          path="/users/:id"
-          element={user ? <UserDetailPage /> : <Navigate to="/login" replace />}
-        />
-        <Route
-          path="/posts"
-          element={user ? <PostsListPage /> : <Navigate to="/login" replace />}
-        />
-        <Route
-          path="/posts/new"
-          element={user ? <PostFormPage /> : <Navigate to="/login" replace />}
-        />
-        <Route
-          path="/posts/:id"
-          element={user ? <PostDetailPage /> : <Navigate to="/login" replace />}
-        />
-        <Route
-          path="/posts/:id/edit"
-          element={user ? <PostFormPage /> : <Navigate to="/login" replace />}
-        />
-        <Route
-          path="/products"
-          element={user ? <ProductsListPage /> : <Navigate to="/login" replace />}
-        />
-        <Route
-          path="/products/new"
-          element={user ? <ProductFormPage /> : <Navigate to="/login" replace />}
-        />
-        <Route
-          path="/products/:id"
-          element={user ? <ProductDetailPage /> : <Navigate to="/login" replace />}
-        />
-        <Route
-          path="/products/:id/edit"
-          element={user ? <ProductFormPage /> : <Navigate to="/login" replace />}
-        />
-        <Route
-          path="/reviews"
-          element={user ? <ReviewsPage /> : <Navigate to="/login" replace />}
-        />
-        <Route
-          path="/inquiries"
-          element={user ? <InquiriesListPage /> : <Navigate to="/login" replace />}
-        />
-        <Route
-          path="/inquiries/:id"
-          element={user ? <InquiryDetailPage /> : <Navigate to="/login" replace />}
-        />
-        <Route
-          path="/mypage"
-          element={user ? <MyPage user={user} /> : <Navigate to="/login" replace />}
-        />
-        <Route
-          path="/settings"
-          element={user ? <SettingsPage user={user} /> : <Navigate to="/login" replace />}
-        />
+        {protectedRoutes.map(({ path, element }) => (
+          <Route
+            key={path}
+            path={path}
+            element={<ProtectedRoute user={user}>{element}</ProtectedRoute>}
+          />
+        ))}
         <Route path="/" element={<Navigate to={user ? '/dashboard' : '/login'} replace />} />
         <Route path="*" element={<Navigate to={user ? '/dashboard' : '/login'} replace />} />
       </Routes>
