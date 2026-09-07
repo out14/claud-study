@@ -1,0 +1,60 @@
+import type { Post } from './types'
+
+export const INITIAL_POSTS: Post[] = [
+  {
+    id: 'post-01',
+    category: 'news',
+    title: '9월 서버 정기 점검 안내',
+    content: '9월 15일 새벽 2시부터 4시까지 정기 점검이 진행됩니다. 점검 시간 동안 서비스 이용이 제한됩니다.',
+    author: '김민준',
+    createdAt: '2026-09-01',
+  },
+  {
+    id: 'post-02',
+    category: 'chat',
+    title: '오늘 날씨 진짜 좋네요',
+    content: '다들 점심시간에 산책 한번 다녀오세요. 날씨가 너무 좋습니다.',
+    author: '이서연',
+    createdAt: '2026-09-03',
+  },
+  {
+    id: 'post-03',
+    category: 'promo',
+    title: '신규 가입 이벤트 - 최대 50% 할인',
+    content: '이번 달 신규 가입자 대상으로 첫 결제 50% 할인 쿠폰을 드립니다.',
+    author: '운영팀',
+    createdAt: '2026-08-28',
+  },
+  {
+    id: 'post-04',
+    category: 'news',
+    title: 'API v2 배포 완료',
+    content: '새로운 API v2가 배포되었습니다. 기존 v1은 3개월 후 종료될 예정입니다.',
+    author: '박도윤',
+    createdAt: '2026-08-20',
+  },
+  {
+    id: 'post-05',
+    category: 'chat',
+    title: '점심 메뉴 추천 받습니다',
+    content: '회사 근처에 새로 생긴 식당 아시는 분 있나요? 추천 부탁드려요.',
+    author: '최지우',
+    createdAt: '2026-09-05',
+  },
+  {
+    id: 'post-06',
+    category: 'promo',
+    title: '연간 구독 플랜 오픈',
+    content: '연간 구독 시 2개월 무료 혜택을 드립니다. 지금 바로 확인해보세요.',
+    author: '운영팀',
+    createdAt: '2026-09-06',
+  },
+  {
+    id: 'post-07',
+    category: 'news',
+    title: '장애 복구 안내',
+    content: '오전 발생했던 로그인 지연 문제가 복구되었습니다. 이용에 불편을 드려 죄송합니다.',
+    author: '정하은',
+    createdAt: '2026-08-15',
+  },
+]
