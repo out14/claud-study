@@ -17,6 +17,7 @@
 - React 19 + TypeScript + Vite 8
 - `react-router-dom` v7 — SPA 라우팅
 - `@tanstack/react-query` v5 — 서버 상태 관리 (작성 규칙은 [API_CONVENTIONS.md](./API_CONVENTIONS.md) 참고)
+- `axios` — HTTP 클라이언트. `client/src/api/client.ts`의 `apiClient` 인스턴스(인터셉터로 access token 부착 + 401 자동 refresh-재시도)를 통해서만 호출하고, `fetch`나 `axios`를 다른 곳에서 직접 쓰지 않습니다 (작성 규칙은 [API_CONVENTIONS.md](./API_CONVENTIONS.md) 참고)
 - Tailwind CSS v4 (`@tailwindcss/vite` 플러그인) — 유틸리티 클래스 위주, 별도 CSS 컴포넌트/라이브러리 없음
 - path alias `@src/*` → `client/src/*` (`vite.config.ts` + `tsconfig.app.json` 양쪽에 정의됨)
 
@@ -25,7 +26,7 @@
 ```
 client/src/
 ├── api/
-│   ├── client.ts          # 공통 fetch 래퍼 (apiFetch, mockDelay, USE_MOCK_API, ApiError, refreshAccessToken)
+│   ├── client.ts          # axios 인스턴스(apiClient) + mockDelay, USE_MOCK_API, ApiError, refreshAccessToken
 │   ├── authToken.ts       # access token 메모리 저장소 (getAccessToken/setAccessToken/clearAccessToken)
 │   └── authEvents.ts      # refresh까지 실패했을 때(세션 만료) 구독하는 이벤트 버스 (onSessionExpired)
 ├── components/            # 여러 feature가 공유하는 순수 UI 컴포넌트
@@ -60,7 +61,7 @@ client/src/
 
 - **access token**: 로그인/refresh 응답 바디로만 내려오고, `api/authToken.ts` 모듈 변수(메모리)에만 저장됩니다. `localStorage`/`sessionStorage`에는 절대 저장하지 않습니다(새로고침하면 사라지는 게 의도된 동작).
 - **refresh token**: 서버가 `httpOnly + SameSite=Lax` 쿠키(`refreshToken`, path `/api/auth`)로만 내려주고 클라이언트 JS는 값을 읽을 수 없습니다. `secure`는 프로덕션(HTTPS)에서만 켜집니다(`server/src/auth/tokens.js`).
-- **자동 refresh + 재시도**: `api/client.ts`의 `apiFetch`가 401을 받으면(단, `/auth/*` 요청 자체는 제외) `refreshAccessToken()`을 호출해 새 access token을 받아온 뒤 원래 요청을 한 번만 재시도합니다. 동시에 여러 요청이 401을 받아도 refresh 요청은 하나로 합쳐집니다(in-flight promise 재사용).
+- **자동 refresh + 재시도**: `api/client.ts`의 `apiClient`(axios 인스턴스) 응답 인터셉터가 401을 받으면(단, `/auth/*` 요청 자체는 제외) `refreshAccessToken()`을 호출해 새 access token을 받아온 뒤 원래 요청을 한 번만 재시도합니다. 동시에 여러 요청이 401을 받아도 refresh 요청은 하나로 합쳐집니다(in-flight promise 재사용).
 - **세션 만료 처리**: refresh까지 실패하면 `api/authEvents.ts`의 `emitSessionExpired()`가 호출되고, `App.tsx`가 이를 구독해 로그아웃 처리(로컬 상태 정리 + `/login` 이동)를 합니다.
 - **로그아웃**: `features/auth/queries.ts`의 `useLogoutMutation`(→ `POST /api/auth/logout`)으로 서버의 refresh token을 무효화한 뒤, 메모리 access token(`clearAccessToken()`)과 `localStorage`를 정리합니다.
 - 서버의 `users`/`posts` 라우트는 `requireAuth` 미들웨어로 보호되어 있어 access token(`Authorization: Bearer ...`) 없이는 401을 반환합니다. 새 보호 라우트를 추가할 때도 `app.js`에서 `requireAuth`를 앞에 붙이세요.
@@ -132,7 +133,7 @@ server/src/
 
 ## 개발 환경 실행
 
-- client: `cd client && npm run dev` → http://localhost:5173
+- client: `cd client && npm run dev` → http://localhost:5000
 - server: `cd server && npm run dev` → http://localhost:4000 (MySQL 필요, 최초 1회 `npm run db:init`)
 - client가 실제 server와 연동되려면 `client/.env`를 `VITE_USE_MOCK_API=false` + `VITE_API_BASE_URL=http://localhost:4000/api`로 설정해야 합니다 (`true`면 서버 없이 mock 데이터로 동작).
 

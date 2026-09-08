@@ -1,4 +1,4 @@
-import { apiFetch, mockDelay, USE_MOCK_API } from '@src/api/client'
+import { apiClient, mockDelay, USE_MOCK_API } from '@src/api/client'
 import { INITIAL_USERS } from './mockUsers'
 import type { AppUser } from './types'
 
@@ -18,12 +18,14 @@ async function updateUserMock(id: string, updates: Partial<AppUser>): Promise<Ap
   return updated
 }
 
-function getUsersRequest(): Promise<AppUser[]> {
-  return apiFetch<AppUser[]>('/users')
+async function getUsersRequest(): Promise<AppUser[]> {
+  const { data } = await apiClient.get<AppUser[]>('/users')
+  return data
 }
 
-function updateUserRequest(id: string, updates: Partial<AppUser>): Promise<AppUser> {
-  return apiFetch<AppUser>(`/users/${id}`, { method: 'PATCH', json: updates })
+async function updateUserRequest(id: string, updates: Partial<AppUser>): Promise<AppUser> {
+  const { data } = await apiClient.patch<AppUser>(`/users/${id}`, updates)
+  return data
 }
 
 export function getUsers(): Promise<AppUser[]> {

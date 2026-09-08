@@ -1,4 +1,4 @@
-import { apiFetch, mockDelay, USE_MOCK_API } from '@src/api/client'
+import { apiClient, mockDelay, USE_MOCK_API } from '@src/api/client'
 import type { LoginCredentials, LoginResult } from './types'
 
 const MOCK_USER: LoginCredentials = {
@@ -22,8 +22,9 @@ async function loginMock(credentials: LoginCredentials): Promise<LoginResult> {
   }
 }
 
-function loginRequest(credentials: LoginCredentials): Promise<LoginResult> {
-  return apiFetch<LoginResult>('/auth/login', { method: 'POST', json: credentials })
+async function loginRequest(credentials: LoginCredentials): Promise<LoginResult> {
+  const { data } = await apiClient.post<LoginResult>('/auth/login', credentials)
+  return data
 }
 
 export function login(credentials: LoginCredentials): Promise<LoginResult> {
@@ -34,8 +35,8 @@ async function logoutMock(): Promise<void> {
   await mockDelay(200)
 }
 
-function logoutRequest(): Promise<void> {
-  return apiFetch<void>('/auth/logout', { method: 'POST' })
+async function logoutRequest(): Promise<void> {
+  await apiClient.post('/auth/logout')
 }
 
 export function logout(): Promise<void> {

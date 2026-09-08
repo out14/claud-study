@@ -1,4 +1,4 @@
-import { apiFetch, mockDelay, USE_MOCK_API } from '@src/api/client'
+import { apiClient, mockDelay, USE_MOCK_API } from '@src/api/client'
 import { INITIAL_INQUIRIES } from './mockInquiries'
 import type { Inquiry } from './types'
 
@@ -38,19 +38,21 @@ async function deleteInquiryMock(id: string): Promise<void> {
   mockInquiries = mockInquiries.filter((inquiry) => inquiry.id !== id)
 }
 
-function getInquiriesRequest(): Promise<Inquiry[]> {
-  return apiFetch<Inquiry[]>('/inquiries')
+async function getInquiriesRequest(): Promise<Inquiry[]> {
+  const { data } = await apiClient.get<Inquiry[]>('/inquiries')
+  return data
 }
 
-function updateInquiryRequest(
+async function updateInquiryRequest(
   id: string,
   updates: { answerContent: string | null },
 ): Promise<Inquiry> {
-  return apiFetch<Inquiry>(`/inquiries/${id}`, { method: 'PATCH', json: updates })
+  const { data } = await apiClient.patch<Inquiry>(`/inquiries/${id}`, updates)
+  return data
 }
 
-function deleteInquiryRequest(id: string): Promise<void> {
-  return apiFetch<void>(`/inquiries/${id}`, { method: 'DELETE' })
+async function deleteInquiryRequest(id: string): Promise<void> {
+  await apiClient.delete(`/inquiries/${id}`)
 }
 
 export function getInquiries(): Promise<Inquiry[]> {

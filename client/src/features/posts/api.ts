@@ -1,4 +1,4 @@
-import { apiFetch, mockDelay, USE_MOCK_API } from '@src/api/client'
+import { apiClient, mockDelay, USE_MOCK_API } from '@src/api/client'
 import { INITIAL_POSTS } from './mockPosts'
 import type { Post } from './types'
 
@@ -40,20 +40,23 @@ async function deletePostMock(id: string): Promise<void> {
   mockPosts = mockPosts.filter((post) => post.id !== id)
 }
 
-function getPostsRequest(): Promise<Post[]> {
-  return apiFetch<Post[]>('/posts')
+async function getPostsRequest(): Promise<Post[]> {
+  const { data } = await apiClient.get<Post[]>('/posts')
+  return data
 }
 
-function createPostRequest(input: PostInput): Promise<Post> {
-  return apiFetch<Post>('/posts', { method: 'POST', json: input })
+async function createPostRequest(input: PostInput): Promise<Post> {
+  const { data } = await apiClient.post<Post>('/posts', input)
+  return data
 }
 
-function updatePostRequest(id: string, updates: Partial<Post>): Promise<Post> {
-  return apiFetch<Post>(`/posts/${id}`, { method: 'PATCH', json: updates })
+async function updatePostRequest(id: string, updates: Partial<Post>): Promise<Post> {
+  const { data } = await apiClient.patch<Post>(`/posts/${id}`, updates)
+  return data
 }
 
-function deletePostRequest(id: string): Promise<void> {
-  return apiFetch<void>(`/posts/${id}`, { method: 'DELETE' })
+async function deletePostRequest(id: string): Promise<void> {
+  await apiClient.delete(`/posts/${id}`)
 }
 
 export function getPosts(): Promise<Post[]> {

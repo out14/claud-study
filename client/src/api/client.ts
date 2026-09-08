@@ -1,3 +1,5 @@
+import axios from 'axios'
+import type { AxiosError, InternalAxiosRequestConfig } from 'axios'
 import { getAccessToken, setAccessToken, clearAccessToken } from './authToken'
 import { emitSessionExpired } from './authEvents'
 
@@ -14,9 +16,25 @@ export class ApiError extends Error {
   }
 }
 
-interface ApiFetchOptions extends Omit<RequestInit, 'body'> {
-  json?: unknown
+interface RetryableConfig extends InternalAxiosRequestConfig {
+  _retry?: boolean
 }
+
+/** 새 리소스를 추가할 때 이 인스턴스로 `apiClient.get/post/patch/delete`를 그대로 사용하세요. */
+export const apiClient = axios.create({
+  baseURL: BASE_URL,
+  // refresh token(httpOnly 쿠키)을 주고받으려면 항상 자격 증명을 포함해야 합니다.
+  withCredentials: true,
+  headers: { 'Content-Type': 'application/json' },
+})
+
+apiClient.interceptors.request.use((config) => {
+  const accessToken = getAccessToken()
+  if (accessToken) {
+    config.headers.Authorization = `Bearer ${accessToken}`
+  }
+  return config
+})
 
 let refreshInFlight: Promise<boolean> | null = null
 
@@ -35,61 +53,42 @@ export function refreshAccessToken(): Promise<boolean> {
 
 async function performRefresh(): Promise<boolean> {
   try {
-    const response = await fetch(`${BASE_URL}/auth/refresh`, {
-      method: 'POST',
-      credentials: 'include',
-    })
-    if (!response.ok) return false
-
-    const data = (await response.json()) as { accessToken: string }
-    setAccessToken(data.accessToken)
+    const response = await apiClient.post<{ accessToken: string }>('/auth/refresh')
+    setAccessToken(response.data.accessToken)
     return true
   } catch {
     return false
   }
 }
 
-export async function apiFetch<T>(
-  path: string,
-  options: ApiFetchOptions = {},
-  _isRetry = false,
-): Promise<T> {
-  const { json, headers, ...rest } = options
-  const accessToken = getAccessToken()
+apiClient.interceptors.response.use(
+  (response) => response,
+  async (error: AxiosError<{ message?: string }>) => {
+    const config = error.config as RetryableConfig | undefined
 
-  const response = await fetch(`${BASE_URL}${path}`, {
-    ...rest,
-    // refresh token(httpOnly 쿠키)을 주고받으려면 항상 자격 증명을 포함해야 합니다.
-    credentials: 'include',
-    headers: {
-      'Content-Type': 'application/json',
-      ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
-      ...headers,
-    },
-    body: json !== undefined ? JSON.stringify(json) : undefined,
-  })
+    // access token 만료(401)면 refresh 후 한 번만 원래 요청을 재시도합니다.
+    // /auth/* 요청 자체는 재시도 대상에서 제외해 무한 루프를 막습니다.
+    if (
+      error.response?.status === 401 &&
+      config &&
+      !config._retry &&
+      !config.url?.startsWith('/auth/')
+    ) {
+      config._retry = true
+      const refreshed = await refreshAccessToken()
+      if (refreshed) {
+        return apiClient(config)
+      }
 
-  // access token 만료(401)면 refresh 후 한 번만 원래 요청을 재시도합니다.
-  // /auth/* 요청 자체는 재시도 대상에서 제외해 무한 루프를 막습니다.
-  if (response.status === 401 && !_isRetry && !path.startsWith('/auth/')) {
-    const refreshed = await refreshAccessToken()
-    if (refreshed) {
-      return apiFetch<T>(path, options, true)
+      clearAccessToken()
+      emitSessionExpired()
+      throw new ApiError('세션이 만료되었습니다. 다시 로그인해 주세요.', 401)
     }
 
-    clearAccessToken()
-    emitSessionExpired()
-    throw new ApiError('세션이 만료되었습니다. 다시 로그인해 주세요.', 401)
-  }
-
-  if (!response.ok) {
-    const body = await response.json().catch(() => null)
-    throw new ApiError(body?.message ?? '요청을 처리하지 못했습니다.', response.status)
-  }
-
-  if (response.status === 204) return undefined as T
-  return response.json() as Promise<T>
-}
+    const message = error.response?.data?.message ?? '요청을 처리하지 못했습니다.'
+    throw new ApiError(message, error.response?.status ?? 0)
+  },
+)
 
 export function mockDelay(ms = 400): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms))

@@ -1,4 +1,4 @@
-import { apiFetch, mockDelay, USE_MOCK_API } from '@src/api/client'
+import { apiClient, mockDelay, USE_MOCK_API } from '@src/api/client'
 import { INITIAL_PRODUCTS } from './mockProducts'
 import type { Product } from './types'
 
@@ -42,20 +42,23 @@ async function deleteProductMock(id: string): Promise<void> {
   mockProducts = mockProducts.filter((product) => product.id !== id)
 }
 
-function getProductsRequest(): Promise<Product[]> {
-  return apiFetch<Product[]>('/products')
+async function getProductsRequest(): Promise<Product[]> {
+  const { data } = await apiClient.get<Product[]>('/products')
+  return data
 }
 
-function createProductRequest(input: ProductInput): Promise<Product> {
-  return apiFetch<Product>('/products', { method: 'POST', json: input })
+async function createProductRequest(input: ProductInput): Promise<Product> {
+  const { data } = await apiClient.post<Product>('/products', input)
+  return data
 }
 
-function updateProductRequest(id: string, updates: Partial<Product>): Promise<Product> {
-  return apiFetch<Product>(`/products/${id}`, { method: 'PATCH', json: updates })
+async function updateProductRequest(id: string, updates: Partial<Product>): Promise<Product> {
+  const { data } = await apiClient.patch<Product>(`/products/${id}`, updates)
+  return data
 }
 
-function deleteProductRequest(id: string): Promise<void> {
-  return apiFetch<void>(`/products/${id}`, { method: 'DELETE' })
+async function deleteProductRequest(id: string): Promise<void> {
+  await apiClient.delete(`/products/${id}`)
 }
 
 export function getProducts(): Promise<Product[]> {

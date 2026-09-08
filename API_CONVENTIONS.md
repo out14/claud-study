@@ -19,9 +19,11 @@ features/<feature>/
 
 각 동작마다 `xxxMock` / `xxxRequest` 두 버전을 만들고, `VITE_USE_MOCK_API` 값에 따라 분기하는 함수 하나를 export 합니다. 백엔드가 준비되기 전에도 화면을 만들 수 있고, 나중엔 `.env`의 `VITE_USE_MOCK_API=false` + `VITE_API_BASE_URL` 값만 바꾸면 실제 서버로 전환됩니다.
 
+`xxxRequest` 함수는 `axios` 기반 공용 인스턴스 `apiClient`를 그대로 사용합니다 (`fetch`를 직접 호출하지 않습니다). `apiClient`의 메서드는 `AxiosResponse<T>`를 반환하므로 `{ data }`를 구조분해해서 꺼냅니다.
+
 ```ts
 // features/users/api.ts
-import { apiFetch, mockDelay, USE_MOCK_API } from '@src/api/client'
+import { apiClient, mockDelay, USE_MOCK_API } from '@src/api/client'
 import { INITIAL_USERS } from './mockUsers'
 import type { AppUser } from './types'
 
@@ -32,8 +34,9 @@ async function getUsersMock(): Promise<AppUser[]> {
   return mockUsers.map((user) => ({ ...user }))
 }
 
-function getUsersRequest(): Promise<AppUser[]> {
-  return apiFetch<AppUser[]>('/users')
+async function getUsersRequest(): Promise<AppUser[]> {
+  const { data } = await apiClient.get<AppUser[]>('/users')
+  return data
 }
 
 export function getUsers(): Promise<AppUser[]> {
@@ -41,13 +44,29 @@ export function getUsers(): Promise<AppUser[]> {
 }
 ```
 
-공통 fetch 래퍼는 `client/src/api/client.ts`에 있습니다.
+수정/생성/삭제도 같은 방식입니다 (`features/posts/api.ts` 참고):
 
-- `apiFetch<T>(path, options)` — `VITE_API_BASE_URL` 기준으로 요청, JSON 헤더 자동 세팅, 실패 시 `ApiError` throw.
+```ts
+async function updatePostRequest(id: string, updates: Partial<Post>): Promise<Post> {
+  const { data } = await apiClient.patch<Post>(`/posts/${id}`, updates)
+  return data
+}
+
+async function deletePostRequest(id: string): Promise<void> {
+  await apiClient.delete(`/posts/${id}`)
+}
+```
+
+공통 axios 인스턴스와 유틸은 `client/src/api/client.ts`에 있습니다.
+
+- `apiClient` — `axios.create(...)`로 만든 공용 인스턴스. `baseURL`은 `VITE_API_BASE_URL`, `withCredentials: true`(refresh 쿠키 송수신). 요청 인터셉터가 메모리에 있는 access token을 `Authorization: Bearer ...` 헤더로 자동으로 붙여주므로, 각 `api.ts`에서 토큰을 직접 다루지 않습니다.
+- 응답 인터셉터가 401을 감지하면(`/auth/*` 요청 자체는 제외) `refreshAccessToken()`으로 access token을 갱신한 뒤 원래 요청을 한 번만 자동 재시도합니다. 재시도도 실패하면(또는 갱신 자체가 실패하면) `ApiError`를 throw하고 세션 만료 이벤트를 emit합니다. 새 리소스를 추가할 때 이 흐름을 신경 쓸 필요 없이 `apiClient`만 호출하면 됩니다.
+- `ApiError` — 실패 응답의 `message`를 담아 throw되는 에러 클래스. `error instanceof Error`로 잡아 `.message`를 그대로 사용자에게 보여줍니다.
 - `USE_MOCK_API` — `VITE_USE_MOCK_API` 환경변수 (기본 mock).
 - `mockDelay(ms?)` — mock 함수에서 실제 네트워크처럼 지연을 흉내낼 때 사용.
+- `refreshAccessToken()` — `App.tsx`가 새로고침 직후 세션 복구 시 직접 호출하는 것 외에는, 위 응답 인터셉터가 내부적으로 사용합니다.
 
-새 리소스를 추가할 때 이 세 가지를 그대로 재사용하세요. `fetch`를 여기저기서 직접 호출하지 않습니다.
+새 리소스를 추가할 때 이 다섯 가지를 그대로 재사용하세요. `fetch`나 `axios`를 여기저기서 직접 호출하지 않고, 항상 `apiClient`를 거칩니다.
 
 ## 2. `queries.ts` — useQuery / useMutation 훅
 
@@ -112,14 +131,14 @@ export function useLoginMutation() {
 기능 폴더를 넘나드는 import는 상대경로(`../../`) 대신 `@src/...` alias를 씁니다. 같은 폴더 안(`./types`, `./api`)은 그대로 상대경로 사용.
 
 ```ts
-import { apiFetch } from '@src/api/client'
+import { apiClient } from '@src/api/client'
 import type { AppUser } from '@src/features/users/types'
 ```
 
 ## 체크리스트 (새 기능 추가 시)
 
 - [ ] `types.ts`에 도메인 타입 정의
-- [ ] `api.ts`에 mock/real 버전 + 환경변수 분기 함수 작성 (공통 `apiFetch`/`mockDelay`/`USE_MOCK_API` 재사용)
+- [ ] `api.ts`에 mock/real 버전 + 환경변수 분기 함수 작성 (공통 `apiClient`/`mockDelay`/`USE_MOCK_API` 재사용, `xxxRequest`는 `apiClient.get/post/patch/delete` 사용)
 - [ ] `queries.ts`에 `useXxxQuery` / `useXxxMutation` 작성, mutation 성공 시 `setQueryData`로 캐시 갱신
 - [ ] 페이지 컴포넌트에서 `queries.ts` 훅을 직접 호출 (props로 데이터 내려받지 않기)
 - [ ] 폴더 간 import는 `@src/...` alias 사용

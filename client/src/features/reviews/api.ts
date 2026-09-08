@@ -1,4 +1,4 @@
-import { apiFetch, mockDelay, USE_MOCK_API } from '@src/api/client'
+import { apiClient, mockDelay, USE_MOCK_API } from '@src/api/client'
 import { INITIAL_REVIEWS } from './mockReviews'
 import type { Review } from './types'
 
@@ -25,16 +25,18 @@ async function deleteReviewMock(id: string): Promise<void> {
   mockReviews = mockReviews.filter((review) => review.id !== id)
 }
 
-function getReviewsRequest(): Promise<Review[]> {
-  return apiFetch<Review[]>('/reviews')
+async function getReviewsRequest(): Promise<Review[]> {
+  const { data } = await apiClient.get<Review[]>('/reviews')
+  return data
 }
 
-function updateReviewRequest(id: string, updates: Partial<Review>): Promise<Review> {
-  return apiFetch<Review>(`/reviews/${id}`, { method: 'PATCH', json: updates })
+async function updateReviewRequest(id: string, updates: Partial<Review>): Promise<Review> {
+  const { data } = await apiClient.patch<Review>(`/reviews/${id}`, updates)
+  return data
 }
 
-function deleteReviewRequest(id: string): Promise<void> {
-  return apiFetch<void>(`/reviews/${id}`, { method: 'DELETE' })
+async function deleteReviewRequest(id: string): Promise<void> {
+  await apiClient.delete(`/reviews/${id}`)
 }
 
 export function getReviews(): Promise<Review[]> {

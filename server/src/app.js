@@ -12,7 +12,7 @@ import { requireAuth } from './middleware/requireAuth.js'
 
 const app = express()
 
-const allowedOrigins = (process.env.CLIENT_ORIGIN ?? 'http://localhost:5173')
+const allowedOrigins = (process.env.CLIENT_ORIGIN ?? 'http://localhost:5000')
   .split(',')
   .map((origin) => origin.trim())
 
