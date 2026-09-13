@@ -12,6 +12,10 @@ dist
 dist-ssr
 *.local
 
+# 실제 배포 주소(IP 등)가 들어갈 수 있어 git에서 제외합니다.
+# 템플릿은 .env.example 참고.
+.env
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
