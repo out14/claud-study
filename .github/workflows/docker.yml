@@ -22,6 +22,6 @@ jobs:
       - name: Build and Push
         uses: docker/build-push-action@v6
         with:
-          context: .
+          context: ./client
           push: true
           tags: gimaw/my-react-app:latest
