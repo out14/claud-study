@@ -25,3 +25,19 @@ jobs:
           context: ./client
           push: true
           tags: gimaw/my-react-app:latest
+  deploy:
+      # docker job이 성공해야만 이 job이 시작됩니다
+      needs: docker
+      runs-on: ubuntu-latest
+      steps: 
+          - name: SSH로 EC2에 접속해서 배포
+            uses: appleboy/ssh-action@v1
+            with:
+              host: ${{ secrets.EC2_HOST }}
+              username: ${{secrets.EC2_USERNAME}}
+              key: ${{secrets.EC2_SSH_KEY}}
+              script : |
+                sudo docker pull gimaw/my-react-app:latest
+                sudo docker stop my-react-app
+                sudo docker rm my-react-app
+                sudo docker run -d --name my-react-app -p 80:80 gimaw/my-react-app:latest
